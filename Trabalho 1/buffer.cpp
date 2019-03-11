@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string>
-#include <map>
+#include <unordered_map>
 #include <fstream>
 #include <limits>
 
@@ -15,7 +15,8 @@
 using namespace std;
 
 typedef struct BUF{
-	int num;
+	int num, posMemo;
+	bool referenciado;
 	string linha;
 	struct BUF *prox, *ant;
 }buffer;
@@ -26,21 +27,28 @@ typedef struct FILA{
 }fila;
 
 void menu(int politica);
-void buscarLinha(map<int, BUFFER> *buff, string *nomeArquivo, fila *fil, int politica);
-void mostrarBuffer(map<int, BUFFER> *buff);
+void buscarLinha(unordered_map<int, BUFFER> *buff, string *nomeArquivo, fila *fil, BUFFER **memo, int *corrente, int politica);
+void mostrarBuffer(unordered_map<int, BUFFER> *buff);
 
 void inserirFila(fila *fil, BUFFER novo);
-void remover(map<int, BUFFER> *buff, fila *fil, int politica);
-void removerLRUeFIFO(map<int, BUFFER> *buff, fila *fil);
-void removerMRU(map<int, BUFFER> *buff, fila *fil);
+void inserirMemo(BUFFER **memo, BUFFER novo);
+void remover(unordered_map<int, BUFFER> *buff, fila *fil, BUFFER **memo, int *corrente, int politica);
+void removerLRUeFIFO(unordered_map<int, BUFFER> *buff, fila *fil);
+void removerMRU(unordered_map<int, BUFFER> *buff, fila *fil);
+void removerClock(unordered_map<int, BUFFER> *buff, BUFFER **memo, int *corrente);
 
-void mudarPolitica(int *politica);
+void mudarPolitica(int *politica, unordered_map<int, BUFFER> *buff, fila *fil, BUFFER **memo, int *corrente);
 
 int main(){
 	string nomeArquivo;
-	map<int, BUFFER> buff;
-	int opcao, politica = LRU;
+	unordered_map<int, BUFFER> buff;
+	int opcao, politica = LRU, corrente = 0;
 	fila fil;
+	BUFFER *memo = (BUFFER*)malloc(sizeof(BUFFER) * 5);
+	
+	for(int i = 0; i < 5; i++){
+		memo[i] = NULL;
+	}
 	
 	fil.cabeca = NULL;
 	fil.cauda = NULL;
@@ -56,8 +64,7 @@ int main(){
 		mostrarBuffer(&buff);
 		do{
 			menu(politica);
-			cin >> opcao;
-			scanf("%*c");
+			scanf("%d%*c", &opcao);
 			cout << endl << endl;
 			
 			if(opcao < 1 || opcao > 5){
@@ -70,14 +77,14 @@ int main(){
 		
 		switch(opcao){
 			case 1:
-				buscarLinha(&buff, &nomeArquivo, &fil, politica);
+				buscarLinha(&buff, &nomeArquivo, &fil, &memo, &corrente, politica);
 			break;
 			case 2:
-				remover(&buff, &fil, politica);
+				remover(&buff, &fil, &memo, &corrente, politica);
 			break;
 			case 3: break;
 			case 4:
-				mudarPolitica(&politica);
+				mudarPolitica(&politica, &buff, &fil, &memo, &corrente);
 			break;
 			case 5: break;
 			default: break;
@@ -115,29 +122,30 @@ void menu(int politica){
 	cout << "Escolha uma opção: ";
 }
 
-void buscarLinha(map<int, BUFFER> *buff, string *nomeArquivo, fila *fil, int politica){
+void buscarLinha(unordered_map<int, BUFFER> *buff, string *nomeArquivo, fila *fil, BUFFER **memo, int *corrente, int politica){
 	string valor;
 	int num;
 	BUFFER aux;
 	
 	cout << "Insira a linha desejada: ";
-	cin >> num;
-	scanf("%*c");
+	scanf("%d%*c", &num);
 	
-	map<int, BUFFER>::iterator achou = buff->find(num);
+	unordered_map<int, BUFFER>::iterator achou = buff->find(num);
 	
 	if(achou != buff->end()){
 		aux = achou->second;
 		cout << "Valor encontrado:" << endl << "Numero: " << aux->num << endl << "Linha: " << aux->linha << endl << endl;
 		
-		if(politica != FIFO ){
+		if(politica == CLOCK){
+			aux->referenciado = true;
+		}else if(politica != FIFO){
 			inserirFila(fil, aux);
 		}
 	}else{
 		fstream arquivo(nomeArquivo->data(), fstream::in);
 		
 		if(buff->size() > 4){
-			remover(buff, fil, politica);
+			remover(buff, fil, memo, corrente, politica);
 		}
 		
 		for(int i = 0; i < num - 1; i++){
@@ -151,19 +159,26 @@ void buscarLinha(map<int, BUFFER> *buff, string *nomeArquivo, fila *fil, int pol
 		aux = (BUFFER)malloc(sizeof(buffer));
 		aux->num = num;
 		aux->linha = valor;
+		aux->referenciado = true;
 		aux->prox = NULL;
 		aux->ant = NULL;
 		
 		(*buff)[num] = aux;
-		inserirFila(fil, aux);
+		
+		arquivo.close();
+		
+		if(politica == CLOCK){
+			inserirMemo(memo, aux);
+		}else{
+			inserirFila(fil, aux);
+		}
 	}
 	
 	scanf("%*c");
 }
 
-void mostrarBuffer(map<int, BUFFER> *buff){
-	map<int, BUFFER>::iterator inicio = buff->begin(), fim = buff->end();
-	map<int, BUFFER>::key_compare compar = buff->key_comp();
+void mostrarBuffer(unordered_map<int, BUFFER> *buff){
+	unordered_map<int, BUFFER>::iterator inicio = buff->begin(), fim = buff->end();
 	BUFFER aux;
 	
 	cout << "----- buffer -----" << endl << endl;
@@ -207,9 +222,20 @@ void inserirFila(fila *fil, BUFFER novo){
 	}
 }
 
-void remover(map<int, BUFFER> *buff, fila *fil, int politica){
-	if(fil->cabeca == NULL && fil->cauda == NULL){
+void inserirMemo(BUFFER **memo, BUFFER novo){
+	for(int i = 0; i < 5; i++){
+		if((*memo)[i] == NULL){
+			novo->posMemo = i;
+			(*memo)[i] = novo;
+			return;
+		}
+	}
+}
+
+void remover(unordered_map<int, BUFFER> *buff, fila *fil, BUFFER **memo, int *corrente, int politica){
+	if(!buff->size()){
 		cout << "O buffer está vazio!!!" << endl << endl;
+		scanf("%*c");
 	}else{
 		switch (politica){
 			case LRU:
@@ -219,6 +245,7 @@ void remover(map<int, BUFFER> *buff, fila *fil, int politica){
 				removerLRUeFIFO(buff, fil);
 			break;
 			case CLOCK:
+				removerClock(buff, memo, corrente);
 			break;
 			case MRU:
 				removerMRU(buff, fil);
@@ -228,7 +255,7 @@ void remover(map<int, BUFFER> *buff, fila *fil, int politica){
 	}
 }
 
-void removerLRUeFIFO(map<int, BUFFER> *buff, fila *fil){
+void removerLRUeFIFO(unordered_map<int, BUFFER> *buff, fila *fil){
 	BUFFER aux = fil->cabeca;
 	
 	fil->cabeca = aux->ant;
@@ -247,7 +274,7 @@ void removerLRUeFIFO(map<int, BUFFER> *buff, fila *fil){
 	free(aux);
 }
 
-void removerMRU(map<int, BUFFER> *buff, fila *fil){
+void removerMRU(unordered_map<int, BUFFER> *buff, fila *fil){
 	BUFFER aux = fil->cauda;
 	
 	fil->cauda = aux->prox;
@@ -266,8 +293,45 @@ void removerMRU(map<int, BUFFER> *buff, fila *fil){
 	free(aux);
 }
 
-void mudarPolitica(int *politica){
+void removerClock(unordered_map<int, BUFFER> *buff, BUFFER **memo, int *corrente){
+	BUFFER aux = NULL;
+	bool achado = false;
+	
+	do{
+		if((*memo)[*corrente] != NULL){
+			
+			if(((*memo)[*corrente])->referenciado){
+				
+				((*memo)[*corrente])->referenciado = false;
+				(*corrente)++;
+				
+			}else{
+				achado = true;
+			}
+			
+		}else{
+			(*corrente)++;
+		}
+		
+		if(*corrente >= 5){
+			*corrente = 0;
+		}
+	}while(!achado);
+	
+	aux = (*memo)[*corrente];
+	
+	cout << "Resgitro que será removido:" << endl << "Linha: " << aux->num << endl << "Valor: " << aux->linha << endl;
+	
+	scanf("%*c");
+	
+	buff->erase(aux->num);
+	(*memo)[aux->posMemo] = NULL;
+	free(aux);
+}
+
+void mudarPolitica(int *politica, unordered_map<int, BUFFER> *buff, fila *fil, BUFFER **memo, int *corrente){
 	int opcao;
+	buffer *ant, *prox;
 	
 	do{
 		cout << "1 - LRU" << endl;
@@ -276,8 +340,7 @@ void mudarPolitica(int *politica){
 		cout << "4 - MRU" << endl << endl;
 		cout << "Escolha uma opção: ";
 		
-		cin >> opcao;
-		scanf("%*c");
+		scanf("%d%*c", &opcao);
 	
 		if(opcao < 1 || opcao > 4){
 			cout << "Opção inexistente!!!";
@@ -287,4 +350,24 @@ void mudarPolitica(int *politica){
 	}while(opcao < 1 || opcao > 4);
 	
 	*politica = opcao;
+	
+	buff->clear();
+	
+	if(fil->cabeca != NULL || fil->cauda != NULL){
+		prox = fil->cabeca;
+		while(prox != NULL){
+			ant = prox;
+			free(ant);
+		}
+	}
+	fil->cabeca = NULL;
+	fil->cauda = NULL;
+	
+	for(int i = 0; i < 5; i++){
+		if((*memo)[i] != NULL){
+			free((*memo)[i]);
+			(*memo)[i] = NULL;
+		}
+	}
+	
 }
