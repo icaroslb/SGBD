@@ -122,7 +122,7 @@ void menu(int politica){
 
 void buscarLinha(unordered_map<int, BUFFER> *buff, string *nomeArquivo, fila *fil, BUFFER **memo, int *corrente, int politica, int *hit, int *miss){
 	string valor;
-	int num, fim = 0;
+	int num;
 	BUFFER aux;
 	
 	cout << "Insira a linha desejada: ";
@@ -132,7 +132,7 @@ void buscarLinha(unordered_map<int, BUFFER> *buff, string *nomeArquivo, fila *fi
 	
 	if(achou != buff->end()){
 		aux = achou->second;
-		cout << "Valor encontrado no buffer:" << endl << "Numero: " << aux->num << endl << "Linha: " << aux->linha << endl << endl;
+		cout << "Valor encontrado:" << endl << "Numero: " << aux->num << endl << "Linha: " << aux->linha << endl << endl;
 		
 		(*hit)++;
 		
@@ -148,33 +148,31 @@ void buscarLinha(unordered_map<int, BUFFER> *buff, string *nomeArquivo, fila *fi
 			remover(buff, fil, memo, corrente, politica);
 		}
 		
-		for(int i = 0; i < num - 1 && fim != EOF; i++){
+		for(int i = 0; i < num - 1; i++){
 			arquivo.ignore(numeric_limits<streamsize>::max(),'\n');
 		}
 		
-		if(getline(arquivo, valor)){
-			cout << "Valor encontrado:" << endl << "Numero: " << num << endl << "Linha: " << valor << endl << endl;
-			
-			(*miss)++;
-			
-			aux = (BUFFER)malloc(sizeof(buffer));
-			aux->num = num;
-			aux->linha = valor;
-			aux->referenciado = true;
-			aux->prox = NULL;
-			aux->ant = NULL;
-			
-			(*buff)[num] = aux;
-			
-			arquivo.close();
-			
-			if(politica == CLOCK){
-				inserirMemo(memo, aux);
-			}else{
-				inserirFila(fil, aux);
-			}
+		getline(arquivo, valor);
+		
+		cout << "Valor encontrado:" << endl << "Numero: " << num << endl << "Linha: " << valor << endl << endl;
+		
+		(*miss)++;
+		
+		aux = (BUFFER)malloc(sizeof(buffer));
+		aux->num = num;
+		aux->linha = valor;
+		aux->referenciado = true;
+		aux->prox = NULL;
+		aux->ant = NULL;
+		
+		(*buff)[num] = aux;
+		
+		arquivo.close();
+		
+		if(politica == CLOCK){
+			inserirMemo(memo, aux);
 		}else{
-			cout << "Valor não encontrado!" << endl << endl;
+			inserirFila(fil, aux);
 		}
 	}
 	
