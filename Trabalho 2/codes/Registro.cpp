@@ -5,7 +5,7 @@ Registro::Registro (std::string *novaTupla) {
 }
 
 Registro::Registro (int tam) {
-	colunas = (std::string*)malloc(sizeof(std::string)*tam);
+	colunas = new std::string[tam];//(std::string*)malloc(sizeof(std::string)*tam);
 }
 
 void Registro::inserirRegistro (int col, std::string registro) {
@@ -18,4 +18,8 @@ std::string Registro::operator[] (int pos) {
 
 std::string Registro::obterColuna (int pos) {
 	return (*this)[pos];
+}
+
+std::string* Registro::obterRegistro (){
+	return colunas;
 }

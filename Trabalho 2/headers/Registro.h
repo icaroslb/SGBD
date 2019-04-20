@@ -15,6 +15,7 @@ public:
 	
 	std::string obterColuna (int pos);
 	std::string operator[] (int pos);
+	std::string* obterRegistro ();
 };
 
 #endif //REGISTRO_H

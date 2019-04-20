@@ -13,9 +13,6 @@ public:
 	Operador (Tabela tabProjetada, std::vector<std::string> novoEsquema);
 	
 	void executar ();
-	int numTuplasGeradas (); 	// GET soma dos registros das pags
-	int numPagsGeradas ();	  	// GET numPag
-	std::string* tuplasGeradas (); // GET resutaldo, transforma a table numa string unica
 };
 
 #endif //PROJECAO_H

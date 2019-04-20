@@ -1,4 +1,5 @@
 #include "../headers/Projecao.h"
+#include <iostream>
 
 Operador::Operador (Tabela tab, std::vector<std::string> novoEsquema) : Tabela (novoEsquema){
 	esquemaProjecao = novoEsquema;
@@ -10,45 +11,33 @@ Operador::Operador (Tabela tab, std::vector<std::string> novoEsquema) : Tabela (
 }
 
 void Operador::executar (){
-	std::string chave;
+	std::string chave, *regAux;
 	std::vector<Registro*> listaRegistros;
-	Registro regAux(esquemaProjecao.size());
-	std::unordered_map<std::string, Registro> tabHash;
+	std::unordered_map<std::string, std::string*> tabHash;
+	int indice;
 	
-	for(Pagina *i : esquemaProjecao){                                             //Iteraremos sobre páginas da tabela original
+	for(Pagina *i : paginasProjecao){                                             //Iteraremos sobre páginas da tabela original
 		listaRegistros = i->obterRegistros();                                       //Primeiro obtemos os registros da página
 		
-		for(Registro *j : listaRegistros){                                          //Agora iteraremos sobre os registros da página
+		for(Registro *j : listaRegistros){   
+			indice = 0;
+			
+			regAux = new std::string[esquemaProjecao.size()];                         //Agora iteraremos sobre os registros da página
 			for(int k : posColunas){                                                  //Preencheremos o registro e atualizaremos a chave
-				regAux.inserirRegistro(k, (*j)[k]);
+				regAux[indice++] = (*j)[k];
 				chave += (*j)[k];
 			}
 			
-			tabHash = {{chave, regAux}};                                              //Colocamos cada registro na tabela hash
-			
-			chave.clear();
+			tabHash[chave] = regAux;                                                  //Colocamos cada registro na tabela hash
+			chave.clear();                                                            //Zeramos a chave para usá-a novamente
 		}
 	}
 	
-	//A fazer (retirar da tabela hash e colocar nas páginas)
-	
-	return;
-}
-
-int Operador::numTuplasGeradas (){
-	int numPaginas = paginas.size (), quantRegistros = 0;
-	
-	for(Pagina *i : paginas){
-		quantRegistros += i->quantRegistros();
+	for(int i = 0; i < tabHash.bucket_count(); i++){                              //Iteramos sobre os buckets
+		for(auto j = tabHash.begin(i); j != tabHash.end(i); j++){                   //Iteramos sobre os elementos dos buckets
+			inserirTupla(j->second);
+		}
 	}
 	
-	return quantRegistros;
-}
-
-int Operador::numPagsGeradas (){
-	return paginas.size();
-}
-
-std::string* Operador::tuplasGeradas (){
-	return NULL;
+	return;
 }

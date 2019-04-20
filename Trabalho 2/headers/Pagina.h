@@ -14,6 +14,7 @@ public:
 	Pagina(int tamPagina);
 
 	void inserirReg (std::string *reg);
+	void inserirReg (Registro *novaTupla);
 	bool cheia ();
 	int quantRegistros ();
 	std::vector<Registro*> obterRegistros ();

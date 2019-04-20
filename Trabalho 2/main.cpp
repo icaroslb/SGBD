@@ -1,3 +1,4 @@
+#include <iostream>
 #include <string>
 #include "headers/Tabela.h"
 #include "headers/Pagina.h"
@@ -48,7 +49,12 @@ int main() {
     int num_tuplas  = op.numTuplasGeradas(); // Retorna a quantidade de tuplas geradas pela operacao.
     int num_pags    = op.numPagsGeradas();  // Retorna a quantidade de paginas geradas pela operacao.
 
-    std::string *tuplas = op.tuplasGeradas(); // Retorna as tuplas geradas pela operacao.
+    std::vector<std::string*> tuplas = op.tuplasGeradas(); // Retorna as tuplas geradas pela operacao.
+    
+    printf("Numero tuplas: %d\nNumero páginas: %d\n\n", num_tuplas, num_pags);
+    for(std::string *i : tuplas){
+    	std::cout << i[0] << " - " << i[1] << std::endl;
+    }
     
     return 0;
 }

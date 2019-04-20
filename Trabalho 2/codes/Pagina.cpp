@@ -10,6 +10,11 @@ void Pagina::inserirReg (std::string *reg){
 	return;
 }
 
+void Pagina::inserirReg (Registro *reg){
+	registros.push_back(reg);
+	return;
+}
+
 bool Pagina::cheia (){
 	return registros.size() >= tam;
 }
