@@ -4,7 +4,7 @@ Tabela::Tabela (std::vector<std::string> novoEsquema){
 	int tam = novoEsquema.size(), cont = 0;
 	
 	for(std::string i : novoEsquema){
-		esquema = {{i, cont}};
+		esquema[i] = cont;
 		cont++;
 	}
 }
@@ -12,7 +12,7 @@ Tabela::Tabela (std::vector<std::string> novoEsquema){
 void Tabela::inserirTupla (std::string *novaTupla){
 	Pagina *paginaInsercao;
 	
-	if (paginas.size() == 0 ){//|| (paginas.size() && (*paginas.end())->cheia())) {
+	if (paginas.size() == 0  || (paginas.size() && (*paginas.back()).cheia())) {
 		paginas.push_back(new Pagina(14));
 	}
 	
@@ -26,7 +26,7 @@ void Tabela::inserirTupla (std::string *novaTupla){
 void Tabela::inserirTupla (Registro *novaTupla){
 	Pagina *paginaInsercao;
 	
-	if (paginas.size() == 0 ){//|| (paginas.size() && (*paginas.end())->cheia())) {
+	if (paginas.size() == 0 || (paginas.size() && (*paginas.back()).cheia())) {
 		paginas.push_back(new Pagina(14));
 	}
 	

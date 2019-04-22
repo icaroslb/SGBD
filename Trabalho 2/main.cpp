@@ -25,8 +25,27 @@ int main() {
     uva.inserirTupla(new std::string[4] {"2", "uva2", "tinto",  "2"});
 
     vinho.inserirTupla(new std::string[5] {"0", "vinho0", "1990", "0", "0"});
-    vinho.inserirTupla(new std::string[5] {"1", "vinho1", "1991", "1", "0"});
+    vinho.inserirTupla(new std::string[5] {"0", "vinho1", "1991", "1", "0"});
     vinho.inserirTupla(new std::string[5] {"2", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"3", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"2", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"3", "vinho2", "1992", "2", "3"});
+    vinho.inserirTupla(new std::string[5] {"4", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"5", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"6", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"7", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"8", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"9", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"10", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"11", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"12", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"13", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"14", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"2", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"15", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"17", "vinho2", "1992", "2", "2"});
+    vinho.inserirTupla(new std::string[5] {"16", "vinho2", "1992", "2", "2"});
+
 
 
 
@@ -53,7 +72,13 @@ int main() {
     
     printf("Numero tuplas: %d\nNumero páginas: %d\n\n", num_tuplas, num_pags);
     for(std::string *i : tuplas){
-    	std::cout << i[0] << " - " << i[1] << std::endl;
+        for(int j = 0; j < op.numCols(); j++){
+            if(j < op.numCols()-1){
+                std::cout << i[j] << " | ";
+            }else{
+                std::cout << i[j] << std::endl;
+            }
+        }
     }
     
     return 0;

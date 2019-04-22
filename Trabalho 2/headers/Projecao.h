@@ -11,6 +11,7 @@ protected:
 	
 public:
 	Operador (Tabela tabProjetada, std::vector<std::string> novoEsquema);
+	int numCols();
 	
 	void executar ();
 };

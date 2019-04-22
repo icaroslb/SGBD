@@ -41,3 +41,7 @@ void Operador::executar (){
 	
 	return;
 }
+
+int Operador::numCols(){
+	return esquemaProjecao.size();
+}
