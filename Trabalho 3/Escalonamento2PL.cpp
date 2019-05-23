@@ -1,5 +1,6 @@
 #include <vector>
 #include <string>
+#include <unordered_map>
 
 #define N_PAGES 100
 
@@ -46,13 +47,23 @@ typedef struct Lock_Request{
 //#####################################################################
 // MAIN CLASSES
 class Tr_Manager{
-	
-	std::vector<TR> Tr;
+	std::vector<TR*> Tr_list;
+	// std::unordered_map<int, TR> Tr_map;
 
 public:
 	Tr_Manager();
 	~Tr_Manager();
-			
+
+	void insert(TR newtr){
+
+		Tr_list[newtr.id] = (TR*)malloc(sizeof(TR))
+		*Tr_list[newtr.id] = newtr;
+
+	}	
+
+	void remove(TR newtr){
+		Tr_list[newtr] = NULL;
+	}		
 };
 
 
@@ -129,7 +140,8 @@ public:
 			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
 		}
 
-	}  		
+	}  
+
 	void U(int Tr, int D){  		//apaga o bloqueio da transacao Tr sobre o item D da Lock_Table
 		if(Lock_Table[D] == NULL) return;
 
@@ -139,7 +151,9 @@ public:
 	}
 
 
-	void escalonar(std::string path);     //Le o arquivo e identifica conflitos.
+	void escalonar(std::string path){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
+
+	}
 };
 
 //####################################################################
