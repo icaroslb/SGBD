@@ -82,7 +82,7 @@ public:
 class Lock_Manager{
 
 	std::vector<LOCK*> Lock_Table;// (N_transactions, NULL);
-	std::vector<LOCK*> Wait_Q, Tail;
+	std::vector<LOCK*> Wait_Q, Tail;  // Tail aponta para as caldas das listas encadeadas de Wait_Q
 	Tr_Manager* tr_manager;
 	int N_transactions, N_pages;
 public:
@@ -95,52 +95,61 @@ public:
 	}
 	~Lock_Manager();
 
+
+	// ##########################################################################
+	// Tratamento de Deadlock
+	void wait_die(int Tr, int D, LOCK* newlock){
+
+		if(tr_manager->get(Tr).timestamp < tr_manager->get(Lock_Table[D]->tr).timestamp){
+			// Se a pagina que está requisitando o bloqueio for mais nova ela espera
+			if(Tail[D] != NULL){
+				Tail[D]->prox = newlock;
+				Tail[D] = Tail[D]->prox;
+			}
+			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
+		}
+		else{// Se for mais velha, faz o rollback da mais nova
+			// ROLLBACK younger transaction
+			TR younger = tr_manager->get(Lock_Table[D]->tr);
+			tr_manager->update_status(younger.id, Status::aborted);
+
+		}
+	}
+
+	// ##########################################################################
+
 								
 	bool LS(int Tr, int D){		//insere um bloqueio no modo compartilhado na Lock_Table se puder,
 								// senao insere um Lock_Request da transacao Tr na Wait_Q de D
-		if(Lock_Table.size() < D){ 
+		if(Lock_Table.size() < D){ 	
 			printf("ERROR, PAGE OUT OF RANGE\n");
 			return true;
 		}
-	
+		// cria um pedido de bloqueio
 		LOCK* newlock = (LOCK*)malloc(sizeof(LOCK));				
 		newlock->tr = Tr;
 		newlock->mode = Mode::S;
 		newlock->pageid = D;
 		newlock->prox = NULL;
 	
-		if(Lock_Table[D] == NULL){
+		if(Lock_Table[D] == NULL){		// Significa que a pagina esta livre
 
 			Lock_Table[D] = newlock;
 			return false;
 		}
-		if(Lock_Table[D] != NULL){
+		if(Lock_Table[D] != NULL){		// senao, a pagina esta bloqueada
 			
-			if(Lock_Table[D]->mode == Mode::S){
-				LOCK* aux = Lock_Table[D];
+			if(Lock_Table[D]->mode == Mode::S){  // se o bloqueio for do tipo compartilhado adiciona
+				LOCK* aux = Lock_Table[D];   	 // a transacao como uma das que bloqueia a pagina D
 				while(aux->prox != NULL) aux = aux->prox;
 				aux->prox = newlock;
 			}
-			else{
+			else{ 	// Se a pagina estiver bloqueada exclusivamente faz o controle de deadlock
 
 				// ##########################################################################
 				//  Wait-Die
 
-
-				if(tr_manager->get(Tr).timestamp < tr_manager->get(Lock_Table[D]->tr).timestamp){
-
-					if(Tail[D] != NULL){
-						Tail[D]->prox = newlock;
-						Tail[D] = Tail[D]->prox;
-					}
-					else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
-				}
-				else{
-					// ROLLBACK younger transaction
-					TR younger = tr_manager->get(Lock_Table[D]->tr);
-					tr_manager->update_status(younger.id, Status::aborted);
-
-				}
+				wait_die(Tr, D, newlock);
 
 
 				// ##########################################################################
@@ -151,28 +160,27 @@ public:
 		}
 	}
 
-	bool LX(int Tr, int D){			//insere um bloqueio no modo exclusivo na Lock_Table...
+	bool LX(int Tr, int D){			//insere um bloqueio no modo exclusivo na Lock_Table
 		if(Lock_Table.size() < D){ 
 			printf("ERROR, PAGE OUT OF RANGE\n");
 			return true;
 		}
 
+		// cria um pedido de bloqueio
 		LOCK* newlock = (LOCK*)malloc(sizeof(LOCK));				
 		newlock->tr = Tr;
 		newlock->mode = Mode::X;
 		newlock->pageid = D;
 		newlock->prox = NULL;
 		
+		// Significa que a pagina esta livre
 		if(Lock_Table[D] == NULL){
 			Lock_Table[D] = newlock;
 			return false;
 		}
+		// senao, a pagina esta bloqueada
 		if(Lock_Table[D] != NULL){
-			if(Tail[D] != NULL){
-				Tail[D]->prox = newlock;
-				Tail[D] = Tail[D]->prox;
-			}
-			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
+			wait_die(Tr, D, newlock);
 			return false;
 		}
 
