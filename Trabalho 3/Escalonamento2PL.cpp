@@ -180,46 +180,88 @@ public:
 		}
 		// senao, a pagina esta bloqueada
 		if(Lock_Table[D] != NULL){
+			// Tratamento de deadlock
 			wait_die(Tr, D, newlock);
 			return false;
 		}
 
 	}  
 
-	void U(int Tr, int D){  		//apaga o bloqueio da transacao Tr sobre o item D da Lock_Table
-		if(Lock_Table[D] == NULL) return;
 
-		LOCK* aux = Lock_Table[D];
-		Lock_Table[D] = Lock_Table[D]->prox;
-		free(aux);
+	void U(int Tr){  		
+	//apaga os bloqueios da transacao Tr da Lock_Table
+	// note que se existir mais de uma pagina bloqueando a pagina ela permanecera bloqueada
+		if(Lock_Table[D] == NULL) return;
+		LOCK* aux, *request, *ant;
+		// Percorre a Lock_Table desbloqueando as paginas 
+		for (int i = 0; i < Lock_Table.size(); ++i){
+			if(Lock_Table[i]->tr == Tr){
+				aux = Lock_Table[i];
+				Lock_Table[i] = Lock_Table[i]->prox;
+				free(aux);
+			}
+		}
+
+		// Percorre a Wait_Q apagando pedidos de Tr
+		aux = NULL; 
+		for (int i = 0; i < Wait_Q.size(); ++i){
+			request = Wait_Q[i];
+			ant = request;
+			while( request != NULL ){
+				if(request->tr == Tr){
+					aux = request;
+					if(request == Wait_Q[i]){
+						Wait_Q[i] = Wait_Q[i]->prox;
+						request = request->prox;	
+					}
+					else{
+						ant->prox = request->prox;
+						request = request->prox;
+					}
+					if(aux == Tail[i]) Tail = ant;
+					free(aux);
+
+				}
+				else{
+					ant = request;
+					request = request->prox;
+				}
+			}
+		}
 	}
 
 	bool start(OP next_operation){
+		// inicia uma operacao, que pode ser de inicializacao de transacao, de leitura, de escrita ou um commit.
+		// operacoes de transacoes terminadas e abortadas serao ignoradas 
 		if ( tr_manager->get(next_operation.id).status != Status::commited && tr_manager->get(next_operation.id).status != Status::aborted){
 			
-			if (next_operation.ope == Type::BT){ // tr_manager->Tr_map.find(next_operation.id) == tr_manager->Tr_map.end()){   // se a transacao nao existir na map
+			// Caso iniciar nova transacao
+			if (next_operation.ope == Type::BT){ // tr_manager->Tr_map.find(next_operation.id) == tr_manager->Tr_map.end()){  esse cidigo comentado e pra testar se a transacao nao existe na map
 			  	TR new_transaction;
 			  	new_transaction.id = next_operation.id;
 			  	new_transaction.status = Status::active;
 			  	new_transaction.timestamp = tr_manager->next_timestamp;
 			  	tr_manager->next_timestamp += 1;
 
+			  	//adiciona uma nova transacao a lista Tr_list com status ativa 
 			  	tr_manager->insert(new_transaction);
 			}
 
+			// Caso operacao de leitura, chama a funcao LS
 			else if(next_operation.ope == Type::R){
 				printf("Reading page %d | Transaction id: %d\n", next_operation.id, next_operation.item);
 				int error = LS(next_operation.id, next_operation.item);
 				if(error) printf("Falha na transacao\n");
 			}
+			// Caso operacao de escrita, chama a operacao LX
 			else if(next_operation.ope == Type::W){
 				printf("Writing page %d | Transaction id: %d\n", next_operation.id, next_operation.item);
 				int error = LX(next_operation.id, next_operation.item);
 				if(error) printf("Falha na transacao\n");
 			}
-
+			// Caso fim de transacao, chama a funcao U, liberando 
 			else if(next_operation.ope == Type::CM){
-				U(next_operation.id, next_operation.item);
+				U(next_operation.id);
 				tr_manager->update_status(next_operation.id, Status::commited);
 
 			}
