@@ -6,15 +6,16 @@
 #include <string>
 #include <vector>
 
-enum {BT, R, W, CM};
-
-struct operacao {
-    int ope, id;
+enum class Type {BT, R, W, CM};
+typedef struct Operation{
+    int  id;
+    Type ope;
     char item;
-};
+}OP;
+
 
 void abrirArquivo (std::fstream &arquivo);
-std::vector < std::vector <operacao> > parser ();
+std::vector < std::vector <OP> > parser ();
 
 
 void abrirArquivo (std::fstream &arquivo) {
@@ -33,12 +34,12 @@ void abrirArquivo (std::fstream &arquivo) {
 }
 
 
-std::vector < std::vector <operacao> > parser () {
+std::vector < std::vector <OP> > parser () {
     std::fstream arquivo;
-    std::vector < std::vector <operacao> > linhas;
-    std::vector <operacao> historia;
+    std::vector < std::vector <OP> > linhas;
+    std::vector <OP> historia;
     std::string texto;
-    operacao opLida;
+    OP opLida;
     int tam;
 
     abrirArquivo(arquivo);
@@ -49,19 +50,19 @@ std::vector < std::vector <operacao> > parser () {
         
         for(int i = 0; i < tam; i += 6){
             if(texto.compare(i, 2, "BT") == 0){
-                opLida.ope = BT;
+                opLida.ope = Type::BT;
                 opLida.id = texto[i+3];
                 opLida.item = -1;
             }else if(texto.compare(i, 1, "R") == 0){
-                opLida.ope = R;
+                opLida.ope = Type::R;
                 opLida.id = texto[i+1];
                 opLida.item = texto[i+3];
             }else if(texto.compare(i, 1, "W") == 0){
-                opLida.ope = W;
+                opLida.ope = Type::W;
                 opLida.id = texto[i+1];
                 opLida.item = texto[i+3];
             }else if(texto.compare(i, 2, "CM") == 0){
-                opLida.ope = CM;
+                opLida.ope = Type::CM;
                 opLida.id = texto[i+3];
                 opLida.item = -1;
             }
