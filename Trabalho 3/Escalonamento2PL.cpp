@@ -1,18 +1,12 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-
-#define N_PAGES 100
+#include "parser.h"
 
 //#################################################################
 // ESTRUTURAS DE DADOS
 enum class Status {active, commited, aborted};
-enum class Type {BT, R, W, CM};
-typedef struct Operation{
-	int  id;
-	Type ope;
-	char item;
-}OP;
+
 
 typedef struct Transaction{
 	int id;
@@ -58,10 +52,15 @@ public:
 	std::unordered_map<int, TR> Tr_map;
 	int next_timestamp = 0;
 
-	Tr_Manager(){
-		Tr_list.resize(N_PAGES);
+	Tr_Manager(int N_transactions){
+		Tr_list.resize(N_transactions);
 	}
 	~Tr_Manager();
+
+	TR get(int tr){
+		return *Tr_list[tr];
+	}
+
 
 	void insert(TR newtr){
 
@@ -82,13 +81,17 @@ public:
 
 class Lock_Manager{
 
-	std::vector<LOCK*> Lock_Table;// (N_PAGES, NULL);
-	// std::vector< std::vector<LOCK> > Wait_Q;
+	std::vector<LOCK*> Lock_Table;// (N_transactions, NULL);
 	std::vector<LOCK*> Wait_Q, Tail;
-	Tr_Manager tr_manager;
+	Tr_Manager* tr_manager;
+	int N_transactions, N_pages;
 public:
-	Lock_Manager(){
-		// Lock_Table = new std::vector<LOCK*>(N_PAGES, NULL);
+	Lock_Manager(int ntransaction, int npages){						
+		Lock_Table.resize(ntransaction);
+		Wait_Q.resize(npages);
+		Tail.resize(npages);
+
+		tr_manager = new Tr_Manager(ntransaction);	
 	}
 	~Lock_Manager();
 
@@ -119,11 +122,30 @@ public:
 				aux->prox = newlock;
 			}
 			else{
-				if(Tail[D] != NULL){
-					Tail[D]->prox = newlock;
-					Tail[D] = Tail[D]->prox;
+
+				// ##########################################################################
+				//  Wait-Die
+
+
+				if(tr_manager->get(Tr).timestamp < tr_manager->get(Lock_Table[D]->tr).timestamp){
+
+					if(Tail[D] != NULL){
+						Tail[D]->prox = newlock;
+						Tail[D] = Tail[D]->prox;
+					}
+					else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
 				}
-				else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
+				else{
+					// ROLLBACK younger transaction
+					TR younger = tr_manager->get(Lock_Table[D]->tr);
+					tr_manager->update_status(younger.id, Status::aborted);
+
+				}
+
+
+				// ##########################################################################
+
+
 			}
 			return false;
 		}
@@ -151,6 +173,7 @@ public:
 				Tail[D] = Tail[D]->prox;
 			}
 			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
+			return false;
 		}
 
 	}  
@@ -163,39 +186,45 @@ public:
 		free(aux);
 	}
 
+	bool start(OP next_operation){
+		if ( tr_manager->get(next_operation.id).status != Status::commited && tr_manager->get(next_operation.id).status != Status::aborted){
+			
+			if (next_operation.ope == Type::BT){ // tr_manager->Tr_map.find(next_operation.id) == tr_manager->Tr_map.end()){   // se a transacao nao existir na map
+			  	TR new_transaction;
+			  	new_transaction.id = next_operation.id;
+			  	new_transaction.status = Status::active;
+			  	new_transaction.timestamp = tr_manager->next_timestamp;
+			  	tr_manager->next_timestamp += 1;
 
-	void escalonar(std::vector<std::vector<OP>> story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
-		OP next_operation;
+			  	tr_manager->insert(new_transaction);
+			}
+
+			else if(next_operation.ope == Type::R){
+				printf("Reading page %d | Transaction id: %d\n", next_operation.id, next_operation.item);
+				int error = LS(next_operation.id, next_operation.item);
+				if(error) printf("Falha na transacao\n");
+			}
+			else if(next_operation.ope == Type::W){
+				printf("Writing page %d | Transaction id: %d\n", next_operation.id, next_operation.item);
+				int error = LX(next_operation.id, next_operation.item);
+				if(error) printf("Falha na transacao\n");
+			}
+
+			else if(next_operation.ope == Type::CM){
+				U(next_operation.id, next_operation.item);
+				tr_manager->update_status(next_operation.id, Status::commited);
+
+			}
+		}
+	}
+
+
+	void scheduler(std::vector<std::vector<OP>> story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
 		for (int i = 0; i < story.size(); ++i){
 			for (int j = 0; j < story[i].size(); ++j){
-				next_operation = story[i][j];
+				start(story[i][j]);
 
-				if (next_operation.ope == Type::BT){ // tr_manager.Tr_map.find(next_operation.id) == tr_manager.Tr_map.end()){   // se a transacao nao existir na map
-				  	TR new_transaction;
-				  	new_transaction.id = next_operation.id;
-				  	new_transaction.status = Status::active;
-				  	new_transaction.timestamp = tr_manager.next_timestamp;
-				  	tr_manager.next_timestamp += 1;
-
-				  	tr_manager.insert(new_transaction);
-				}
-
-				else if(next_operation.ope == Type::R){
-					printf("Reading page %d | Transaction id: %d\n", next_operation.id, next_operation.item);
-					int error = LS(next_operation.id, next_operation.item);
-					if(error) printf("Falha na transacao\n");
-				}
-				else if(next_operation.ope == Type::W){
-					printf("Writing page %d | Transaction id: %d\n", next_operation.id, next_operation.item);
-					int error = LX(next_operation.id, next_operation.item);
-					if(error) printf("Falha na transacao\n");
-				}
-
-				else if(next_operation.ope == Type::CM){
-					U(next_operation.id, next_operation.item);
-					tr_manager.update_status(next_operation.id, Status::commited);
-
-				}
+				
 
 			}
 		}
