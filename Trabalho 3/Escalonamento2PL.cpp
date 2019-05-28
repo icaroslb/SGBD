@@ -25,26 +25,7 @@ typedef struct Lock_Request{
 }LOCK;
 
 //#################################################################
-// FIFO
-// template <class T>
-// class List{
-// 	T chave;
-// 	T *prox;
-// 	T *ant;
-// };
 
-
-// template <class T>
-// class FIFO{
-// 	List <T> head, tail;
-
-// public:
-// 	FIFO();
-// 	~FIFO();
-
-// 	void insert();
-// 	T remove();
-// };
 //#####################################################################
 // MAIN CLASSES
 class Tr_Manager{
@@ -114,9 +95,14 @@ public:
 
 		TR thisTr = tr_manager->get(Tr);
 		TR QueuedTr = tr_manager->get(Lock_Table[D]->tr);
+		TR aux;
+		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
+				aux = tr_manager->get(p->tr);
+				if(aux.timestamp < QueuedTr.timestamp) QueuedTr = aux;
+		}
 		// if(QueuedTr.id != thisTr.id){
 
-			if(thisTr.timestamp <= QueuedTr.timestamp){
+			if(thisTr.timestamp > QueuedTr.timestamp){
 				// Se a pagina que está requisitando o bloqueio for mais nova ela espera
 				printf("wait\n");
 				if(Tail[D] != NULL){
@@ -127,10 +113,14 @@ public:
 			}
 			else{// Se for mais velha, faz o rollback da mais nova
 				// ROLLBACK younger transaction
-				TR younger = tr_manager->get(Lock_Table[D]->tr);
-				printf("ROLLBACK! Transaction id: %d timestamp: %d || older id: %d timestamp: %d \n", younger.id, younger.timestamp, tr_manager->get(Tr).id, tr_manager->get(Tr).timestamp);
-				tr_manager->update_status(younger.id, Status::aborted);
-				U(younger.id);
+				TR younger;
+				for(LOCK* p = Lock_Table[D]; p != NULL; p = p->prox)
+					younger = tr_manager->get(p->tr);
+					if(thisTr.timestamp < younger.timestamp){
+						printf("ROLLBACK! Transaction id: %d timestamp: %d || older id: %d timestamp: %d \n", younger.id, younger.timestamp, tr_manager->get(Tr).id, tr_manager->get(Tr).timestamp);
+						tr_manager->update_status(younger.id, Status::aborted);
+						U(younger.id);
+					}	
 			}
 		// }
 		// else{
@@ -215,17 +205,24 @@ public:
 	//apaga os bloqueios da transacao Tr da Lock_Table
 	// note que se existir mais de uma pagina bloqueando a pagina ela permanecera bloqueada
 		LOCK* aux, *request, *ant;
-		int size = Lock_Table.size();
 		// printf("SIZE %d\n", size);
 		// Percorre a Lock_Table desbloqueando as paginas 
 		for (int D = 0; D < Lock_Table.size(); ++D){
 			// printf("NADA FOR 1 : D=%d\n", D);
-			if(Lock_Table[D] != NULL && Lock_Table[D]->tr == Tr){
-				printf("Unlocking page number %d\n", Lock_Table[D]->pageid);
-				aux = Lock_Table[D];
-				Lock_Table[D] = Lock_Table[D]->prox;
-				free(aux);
-			}
+			ant = NULL;
+			aux = NULL;
+			LOCK **p = &Lock_Table[D];
+			while (*p != NULL && p != NULL){
+				if((*p)->tr == Tr){
+					printf("Unlocking page number %d\n", (*p)->pageid);
+					aux = (*p);
+					if(ant != NULL) ant->prox = (*p)->prox;
+					p = &((*p)->prox);
+
+					free(aux);
+				}
+				else p = &((*p)->prox);
+			}	
 		}
 		// printf("FOR 1 OK\n");
 
@@ -260,6 +257,22 @@ public:
 			}
 		}
 	}
+
+
+	void U(int Tr, int D){
+		// for (int i = 0; i < Lock_Table.size(); ++i){
+		// 	// printf("NADA FOR 1 : D=%d\n", D);
+		// 	if(Lock_Table[D] != NULL && Lock_Table[D]->tr == Tr){
+		// 		printf("Unlocking page number %d\n", Lock_Table[D]->pageid);
+		// 		aux = Lock_Table[D];
+		// 		Lock_Table[D] = Lock_Table[D]->prox;
+		// 		free(aux);
+		// 	}
+		// }
+
+	}
+
+
 
 	bool start(OP next_operation){
 		// inicia uma operacao, que pode ser de inicializacao de transacao, de leitura, de escrita ou um commit.
@@ -450,7 +463,7 @@ int main(int argc, char const *argv[]){
 	Lock_Manager *lm = new  Lock_Manager(3, 4);
 	// Lock_Manager lm2(v.size(),3);
 	std::vector<std::vector<OP> > v1;
-	v1.push_back(v);
+	// v1.push_back(v);
 	v1.push_back(w);
 	lm->scheduler(v1);
 
