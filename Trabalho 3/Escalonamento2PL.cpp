@@ -235,19 +235,46 @@ public:
 	void U(int Tr){  		
 	//apaga os bloqueios da transacao Tr da Lock_Table
 	// note que se existir mais de uma pagina bloqueando a pagina ela permanecera bloqueada
-		LOCK* aux, *request, *ant;
+		LOCK* aux, *request, *ant, **p;
 		// printf("SIZE %d\n", size);
 		// Percorre a Lock_Table desbloqueando as paginas 
+		printf("entrou\n");
+		
+
+
+
 		for (int D = 0; D < Lock_Table.size(); ++D){
-			// printf("NADA FOR 1 : D=%d\n", D);
-			U(Tr, D);
+			
+			aux = NULL; ant = NULL;
+			p = &Lock_Table[D];
+			while ((*p) != NULL && p != NULL){
+				if((*p)->tr == Tr){
+					printf("Unlocking page number %d\n", (*p)->pageid);
+					aux = (*p);
+					// if(ant != NULL) ant->prox = (*p)->prox;
+					printf("OOOOKKKEEEY\n");
+					
+					(*p) = (*p)->prox;
+					free(aux);
+				}
+				else {
+					// ant = (*p);
+					p = &((*p)->prox); 
+				}
+			}
+
+
 		}
-		// printf("FOR 1 OK\n");
+
+
+
+
+		printf("FOR 1 OK\n");
 
 		// Percorre a Wait_Q apagando pedidos de Tr
 		aux = NULL; 
 		for (int i = 0; i < Wait_Q.size(); ++i){
-		// printf("NADA FOR 2\n");
+		printf("NADA FOR 2\n");
 
 			request = Wait_Q[i];
 			ant = request;
@@ -274,6 +301,10 @@ public:
 				}
 			}
 		}
+
+		for (int D = 0; D < Lock_Table.size(); ++D)
+			alock(D);
+
 	}
 
 
@@ -284,7 +315,6 @@ public:
 			if((*p)->tr == Tr){
 				printf("Unlocking page number %d\n", (*p)->pageid);
 				aux = (*p);
-				if(ant != NULL) ant->prox = (*p)->prox;
 				(*p) = (*p)->prox;
 				free(aux);
 			}
@@ -293,6 +323,12 @@ public:
 				p = &((*p)->prox); 
 			}
 		}
+
+		alock(D);
+
+	}
+
+	void alock(int D){
 
 		if(Lock_Table[D] == NULL) {
 			if(Wait_Q[D]!= NULL){
@@ -313,7 +349,6 @@ public:
 				} 			
 			}
  		}
-
 	}
 
 
@@ -401,7 +436,7 @@ public:
 		for (int i = 0; i < 2; ++i){
 			std::cout << "< ";
 			p = tr_manager->get(i);
-			std::cout << p.id << ", " << ((p.status == Status::active) ? "active" : ((p.status == Status::commited) ? "commited" : "aborted" )) << ", " << p.timestamp << " | " ;
+			std::cout << "T" <<  p.id << ", status=" << ((p.status == Status::active) ? "active" : ((p.status == Status::commited) ? "commited" : "aborted" )) << ", timestamp=" << p.timestamp << " | " ;
 			std::cout << " >" << std::endl;		
 		}
 		LOCK* l;
@@ -410,7 +445,7 @@ public:
 			std::cout << "< ";
 			l = Lock_Table[i];
 			for (; l != NULL; l = l->prox){
-				if(l != NULL) std::cout << l->pageid << ", " << ((l->mode == Mode::X) ? 'X' : 'S') << ", " << l->tr << " | " ;
+				if(l != NULL) std::cout << "pageid=" << l->pageid << ", mode=" << ((l->mode == Mode::X) ? 'X' : 'S') << ", T" << l->tr << " | " ;
 				
 			}
 			
@@ -425,7 +460,7 @@ public:
 			std::cout << "< ";
 			qd = Wait_Q[i];
 			for (; qd != NULL; qd = qd->prox){
-				if(qd != NULL) std::cout << qd->pageid << ", " << ((qd->mode == Mode::X) ? 'X' : 'S') << ", " << qd->tr << " | " ;
+				if(qd != NULL) std::cout << "pageid"<< qd->pageid << ", mode=" << ((qd->mode == Mode::X) ? 'X' : 'S') << ", T" << qd->tr << " | " ;
 				
 			}
 			
