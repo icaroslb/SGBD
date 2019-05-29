@@ -90,9 +90,8 @@ public:
 
 	// ##########################################################################
 	// Tratamento de Deadlock
-	void wait_die(int Tr, int D, LOCK* newlock){
-		printf("wait_die\n");
-
+	void wound_wait(int Tr, int D, LOCK* newlock){
+		printf("Wound-wait\n");
 		TR thisTr = tr_manager->get(Tr);
 		TR QueuedTr = tr_manager->get(Lock_Table[D]->tr);
 		TR aux;
@@ -120,7 +119,7 @@ public:
 						printf("ROLLBACK! Transaction id: %d timestamp: %d || older id: %d timestamp: %d \n", younger.id, younger.timestamp, tr_manager->get(Tr).id, tr_manager->get(Tr).timestamp);
 						tr_manager->update_status(younger.id, Status::aborted);
 						U(younger.id);
-					}	
+					}
 			}
 		// }
 		// else{
@@ -128,6 +127,38 @@ public:
 		// 	Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; 
 		// }
 	}
+
+
+
+	void wait_die(int Tr, int D, LOCK* newlock){
+		printf("Wait-die\n");
+
+		TR thisTr = tr_manager->get(Tr);
+		TR QueuedTr = tr_manager->get(Lock_Table[D]->tr);
+		TR aux;
+		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
+				aux = tr_manager->get(p->tr);
+				if(aux.timestamp > QueuedTr.timestamp) QueuedTr = aux;
+		}
+
+		if(thisTr.timestamp <= QueuedTr.timestamp){
+			printf("wait\n");
+			if(Tail[D] != NULL){
+				Tail[D]->prox = newlock;
+				Tail[D] = Tail[D]->prox;
+			}
+			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
+		}else{
+			printf("ROLLBACK! Transaction id: %d timestamp: %d \n", thisTr.id, thisTr.timestamp);
+			tr_manager->update_status(Tr, Status::aborted);
+			U(Tr);
+			printf("else\n");
+		}		 		
+
+	}
+
+
+
 
 	// ##########################################################################
 
@@ -209,20 +240,7 @@ public:
 		// Percorre a Lock_Table desbloqueando as paginas 
 		for (int D = 0; D < Lock_Table.size(); ++D){
 			// printf("NADA FOR 1 : D=%d\n", D);
-			ant = NULL;
-			aux = NULL;
-			LOCK **p = &Lock_Table[D];
-			while (*p != NULL && p != NULL){
-				if((*p)->tr == Tr){
-					printf("Unlocking page number %d\n", (*p)->pageid);
-					aux = (*p);
-					if(ant != NULL) ant->prox = (*p)->prox;
-					p = &((*p)->prox);
-
-					free(aux);
-				}
-				else p = &((*p)->prox);
-			}	
+			U(Tr, D);
 		}
 		// printf("FOR 1 OK\n");
 
@@ -260,15 +278,41 @@ public:
 
 
 	void U(int Tr, int D){
-		// for (int i = 0; i < Lock_Table.size(); ++i){
-		// 	// printf("NADA FOR 1 : D=%d\n", D);
-		// 	if(Lock_Table[D] != NULL && Lock_Table[D]->tr == Tr){
-		// 		printf("Unlocking page number %d\n", Lock_Table[D]->pageid);
-		// 		aux = Lock_Table[D];
-		// 		Lock_Table[D] = Lock_Table[D]->prox;
-		// 		free(aux);
-		// 	}
-		// }
+		LOCK* aux = NULL, *ant = NULL;
+		LOCK **p = &Lock_Table[D];
+		while (*p != NULL && p != NULL){
+			if((*p)->tr == Tr){
+				printf("Unlocking page number %d\n", (*p)->pageid);
+				aux = (*p);
+				if(ant != NULL) ant->prox = (*p)->prox;
+				(*p) = (*p)->prox;
+				free(aux);
+			}
+			else {
+				ant = (*p);
+				p = &((*p)->prox); 
+			}
+		}
+
+		if(Lock_Table[D] == NULL) {
+			if(Wait_Q[D]!= NULL){
+				Lock_Table[D] = Wait_Q[D];
+				Wait_Q[D] = Wait_Q[D]->prox;
+				Lock_Table[D]->prox = NULL;
+
+				if(Lock_Table[D]->mode == Mode::S){
+					LOCK *last = Lock_Table[D], *slock;
+					while(Wait_Q[D] != NULL && Wait_Q[D]->mode == Mode::S){
+						slock = Wait_Q[D];
+						Wait_Q[D] = Wait_Q[D]->prox;
+						last->prox = slock;
+						last = last->prox;
+						last->prox = NULL;
+					}
+
+				} 			
+			}
+ 		}
 
 	}
 
