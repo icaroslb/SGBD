@@ -63,8 +63,13 @@ public:
 		return Tr_list.size();
 	}
 	void clear(int N_transactions){
-		Tr_list.clear();
+		// Tr_list.clear();
+	
+		for (int i = 0; i < Tr_list.size(); ++i){
+			Tr_list[i] = NULL;
+		}
 		Tr_list.resize(N_transactions);
+
 	}
 
 };
@@ -88,7 +93,7 @@ public:
 	~Lock_Manager();
 
 
-	// ##########################################################################
+	// ########################################################################################################################################################################################
 	// Tratamento de Deadlock
 	void wound_wait(int Tr, int D, LOCK* newlock){
 		printf("Wound-wait\n");
@@ -131,7 +136,7 @@ public:
 
 
 	void wait_die(int Tr, int D, LOCK* newlock){
-		printf("Wait-die\n");
+		printf("Wait-die:   ");
 
 		TR thisTr = tr_manager->get(Tr);
 		TR QueuedTr = tr_manager->get(Lock_Table[D]->tr);
@@ -142,14 +147,14 @@ public:
 		}
 
 		if(thisTr.timestamp <= QueuedTr.timestamp){
-			printf("wait\n");
+			printf("Wait\n");
 			if(Tail[D] != NULL){
 				Tail[D]->prox = newlock;
 				Tail[D] = Tail[D]->prox;
 			}
 			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
 		}else{
-			printf("ROLLBACK! Transaction id: %d timestamp: %d \n", thisTr.id, thisTr.timestamp);
+			printf("Die - ROLLBACK! Transaction id: %d timestamp: %d \n", thisTr.id, thisTr.timestamp);
 			tr_manager->update_status(Tr, Status::aborted);
 			U(Tr);
 			printf("else\n");
@@ -160,7 +165,7 @@ public:
 
 
 
-	// ##########################################################################
+	// ############################################################################################################################################################################################
 
 								
 	bool LS(int Tr, int D){		//insere um bloqueio no modo compartilhado na Lock_Table se puder,
@@ -238,7 +243,7 @@ public:
 		LOCK* aux, *request, *ant, **p;
 		// printf("SIZE %d\n", size);
 		// Percorre a Lock_Table desbloqueando as paginas 
-		printf("entrou\n");
+		// printf("entrou\n");
 		
 
 
@@ -252,7 +257,7 @@ public:
 					printf("Unlocking page number %d\n", (*p)->pageid);
 					aux = (*p);
 					// if(ant != NULL) ant->prox = (*p)->prox;
-					printf("OOOOKKKEEEY\n");
+					// printf("OOOOKKKEEEY\n");
 					
 					(*p) = (*p)->prox;
 					free(aux);
@@ -269,12 +274,12 @@ public:
 
 
 
-		printf("FOR 1 OK\n");
+		// printf("FOR 1 OK\n");
 
 		// Percorre a Wait_Q apagando pedidos de Tr
 		aux = NULL; 
 		for (int i = 0; i < Wait_Q.size(); ++i){
-		printf("NADA FOR 2\n");
+		// printf("NADA FOR 2\n");
 
 			request = Wait_Q[i];
 			ant = request;
@@ -329,7 +334,7 @@ public:
 	}
 
 	void alock(int D){
-
+		// Faz andar a fila Wait_Q 
 		if(Lock_Table[D] == NULL) {
 			if(Wait_Q[D]!= NULL){
 				Lock_Table[D] = Wait_Q[D];
@@ -409,7 +414,7 @@ public:
 				
 
 			}
-			
+
 			// int ntransaction = N_transactions;
 			// int npages = N_pages;
 			// Lock_Table.swap(std::vector<LOCK*>);
@@ -429,8 +434,7 @@ public:
 			// printf("lt %d wq %d t %d\n", (int)Lock_Table.size(), (int)Wait_Q.size(), (int)Tail.size() );		
 			// tr_manager->clear(ntransaction);		
 
-		}
-// PRINT #############################################################
+// PRINT #####################################################################################################################################################
 		TR p;
 		std::cout << "Transactions" << std::endl;
 		for (int i = 0; i < 2; ++i){
@@ -470,10 +474,44 @@ public:
 
 		// printf("npages %d ntr %d\n", N_pages, N_transactions);
 
+// ########################################################################################################################################################
+// LIMPANDO VETORES 
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+			for (int i = 0; i < Lock_Table.size(); ++i){
+				LOCK* p = Lock_Table[i], *aux;
+				while(p != NULL){
+					aux = p;
+					p = p->prox;
+					free(aux);
+				}
+					
+			}
+			for (int i = 0; i < Wait_Q.size(); ++i){
+				LOCK* p = Wait_Q[i], *aux;
+				while(p != NULL){
+					aux = p;
+					p = p->prox;
+					free(aux);
+				}
+					
+			}		
+
+			tr_manager->clear(N_transactions);
+			
+// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+		}
+
+
+
 	}
 };
 
-//####################################################################
+//#########################################################################################################################################################
 
 int main(int argc, char const *argv[]){
 	std::vector<OP> v;
@@ -506,6 +544,18 @@ int main(int argc, char const *argv[]){
 	OP op20  = {1, Type::R, 2};
 	OP op21  = {1, Type::W, 2};
 	OP op22  = {1, Type::CM, -1};
+
+
+
+	OP op25  = {1, Type::BT, -1};
+	OP op26  = {2, Type::BT, -1};
+
+	OP op27  = {1, Type::R, 1};
+	OP op28  = {2, Type::R, 0};
+	OP op29  = {1, Type::R, 0};
+
+
+
 
 
 
@@ -542,7 +592,7 @@ int main(int argc, char const *argv[]){
 	Lock_Manager *lm = new  Lock_Manager(3, 4);
 	// Lock_Manager lm2(v.size(),3);
 	std::vector<std::vector<OP> > v1;
-	// v1.push_back(v);
+	v1.push_back(v);
 	v1.push_back(w);
 	lm->scheduler(v1);
 
