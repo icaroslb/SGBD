@@ -1,7 +1,6 @@
 
 #include <vector>
 #include <string>
-#include <unordered_map>
 #include "parser.h"
 
 //#################################################################
@@ -31,7 +30,7 @@ typedef struct Lock_Request{
 class Tr_Manager{
 	std::vector<TR*> Tr_list;
 public:
-	std::unordered_map<int, TR> Tr_map;
+
 	int next_timestamp = 0;
 
 	Tr_Manager(int N_transactions){
@@ -39,8 +38,8 @@ public:
 	}
 	~Tr_Manager();
 
-	TR get(int tr){
-		return *Tr_list[tr];
+	TR* get(int tr){
+		return Tr_list[tr];
 	}
 
 
@@ -66,9 +65,10 @@ public:
 		// Tr_list.clear();
 	
 		for (int i = 0; i < Tr_list.size(); ++i){
+			free(Tr_list[i]);
 			Tr_list[i] = NULL;
 		}
-		Tr_list.resize(N_transactions);
+		// Tr_list.resize(N_transactions);
 
 	}
 
@@ -80,13 +80,14 @@ class Lock_Manager{
 	std::vector<LOCK*> Lock_Table;// (N_transactions, NULL);
 	std::vector<LOCK*> Wait_Q, Tail;  // Tail aponta para as caldas das listas encadeadas de Wait_Q
 	Tr_Manager* tr_manager;
-	int N_transactions, N_pages;
+	int N_transactions, N_pages, serializable;
 public:
 	Lock_Manager();
 	Lock_Manager(int ntransaction, int npages){						
 		Lock_Table.resize(npages);
 		Wait_Q.resize(npages);
 		Tail.resize(npages);
+		serializable = 1;
 
 		tr_manager = new Tr_Manager(ntransaction);	
 	}
@@ -97,11 +98,11 @@ public:
 	// Tratamento de Deadlock
 	void wound_wait(int Tr, int D, LOCK* newlock){
 		printf("Wound-wait\n");
-		TR thisTr = tr_manager->get(Tr);
-		TR QueuedTr = tr_manager->get(Lock_Table[D]->tr);
+		TR thisTr = *tr_manager->get(Tr);
+		TR QueuedTr = *tr_manager->get(Lock_Table[D]->tr);
 		TR aux;
 		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
-				aux = tr_manager->get(p->tr);
+				aux = *tr_manager->get(p->tr);
 				if(aux.timestamp > QueuedTr.timestamp) QueuedTr = aux;
 		}
 		// if(QueuedTr.id != thisTr.id){
@@ -119,9 +120,9 @@ public:
 				// ROLLBACK younger transaction
 				TR younger;
 				for(LOCK* p = Lock_Table[D]; p != NULL; p = p->prox)
-					younger = tr_manager->get(p->tr);
+					younger = *tr_manager->get(p->tr);
 					if(thisTr.timestamp < younger.timestamp){
-						printf("ROLLBACK! Transaction id: %d timestamp: %d || older id: %d timestamp: %d \n", younger.id, younger.timestamp, tr_manager->get(Tr).id, tr_manager->get(Tr).timestamp);
+						printf("ROLLBACK! Transaction id: %d timestamp: %d || older id: %d timestamp: %d \n", younger.id, younger.timestamp, tr_manager->get(Tr)->id, tr_manager->get(Tr)->timestamp);
 						tr_manager->update_status(younger.id, Status::aborted);
 						U(younger.id);
 					}
@@ -136,13 +137,13 @@ public:
 
 
 	void wait_die(int Tr, int D, LOCK* newlock){
-		printf("Wait-die:   ");
+		printf("	Wait-die:   ");
 
-		TR thisTr = tr_manager->get(Tr);
-		TR QueuedTr = tr_manager->get(Lock_Table[D]->tr);
+		TR thisTr = *tr_manager->get(Tr);
+		TR QueuedTr = *tr_manager->get(Lock_Table[D]->tr);
 		TR aux;
 		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
-				aux = tr_manager->get(p->tr);
+				aux = *tr_manager->get(p->tr);
 				if(aux.timestamp < QueuedTr.timestamp) QueuedTr = aux;
 		}
 
@@ -157,7 +158,6 @@ public:
 			printf("Die - ROLLBACK! Transaction id: %d timestamp: %d \n", thisTr.id, thisTr.timestamp);
 			tr_manager->update_status(Tr, Status::aborted);
 			U(Tr);
-			printf("else\n");
 		}		 		
 
 	}
@@ -171,7 +171,7 @@ public:
 	bool LS(int Tr, int D){		//insere um bloqueio no modo compartilhado na Lock_Table se puder,
 								// senao insere um Lock_Request da transacao Tr na Wait_Q de D
 		if(Lock_Table.size() < D){ 	
-			printf("ERROR, PAGE OUT OF RANGE\n");
+			printf("	ERROR, PAGE OUT OF RANGE, D=%d\n", D);
 			return true;
 		}
 		// cria um pedido de bloqueio
@@ -254,10 +254,9 @@ public:
 			p = &Lock_Table[D];
 			while ((*p) != NULL && p != NULL){
 				if((*p)->tr == Tr){
-					printf("Unlocking page number %d\n", (*p)->pageid);
+					printf("	Unlocking page number %d\n", (*p)->pageid);
 					aux = (*p);
 					// if(ant != NULL) ant->prox = (*p)->prox;
-					// printf("OOOOKKKEEEY\n");
 					
 					(*p) = (*p)->prox;
 					free(aux);
@@ -285,7 +284,6 @@ public:
 			ant = request;
 			while( request != NULL ){
 				// printf("NADA WHILE\n");
-				
 				if(request->tr == Tr){
 					aux = request;
 					if(request == Wait_Q[i]){
@@ -293,6 +291,7 @@ public:
 						request = request->prox;	
 					}
 					else{
+						serializable = 0;
 						ant->prox = request->prox;
 						request = request->prox;
 					}
@@ -361,10 +360,10 @@ public:
 	void start(OP next_operation){
 		// inicia uma operacao, que pode ser de inicializacao de transacao, de leitura, de escrita ou um commit.
 		// operacoes de transacoes terminadas e abortadas serao ignoradas 
-		if (next_operation.ope == Type::BT || tr_manager->get(next_operation.id).status != Status::commited && tr_manager->get(next_operation.id).status != Status::aborted){
+		if (next_operation.ope == Type::BT || tr_manager->get(next_operation.id)->status != Status::commited && tr_manager->get(next_operation.id)->status != Status::aborted){
 			
 			// Caso iniciar nova transacao
-			if (next_operation.ope == Type::BT){ // tr_manager->Tr_map.find(next_operation.id) == tr_manager->Tr_map.end()){  esse cidigo comentado e pra testar se a transacao nao existe na map
+			if (next_operation.ope == Type::BT){ 
 				printf("Starting Transaction %d\n", next_operation.id);
 			  	TR new_transaction;
 			  	new_transaction.id = next_operation.id;
@@ -374,7 +373,7 @@ public:
 
 			  	//adiciona uma nova transacao a lista Tr_list com status ativa 
 			  	tr_manager->insert(new_transaction);
-			  	std::cout << "timestamp: " << tr_manager->get(next_operation.id).id << " | global timestamp: " << tr_manager->next_timestamp << std::endl;
+			  	std::cout << "timestamp: " << tr_manager->get(next_operation.id)->id << " | global timestamp: " << tr_manager->next_timestamp << std::endl;
 			}
 
 			// Caso operacao de leitura, chama a funcao LS
@@ -398,23 +397,26 @@ public:
 			}
 		}
 		else {
-			std::cout << "Operation " << next_operation.id  << " is already " << ((tr_manager->get(next_operation.id).status == Status::commited) ?  "commited" : "aborted") << std::endl;
+			std::cout << "Operation " << next_operation.id  << " is already " << ((tr_manager->get(next_operation.id)->status == Status::commited) ?  "commited" : "aborted") << std::endl;
 		}
 	
 	}
 
 
 	void scheduler(std::vector<std::vector<OP>> &story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
+		TR* p;
+		LOCK *l, *qd;
 		for (int i = 0; i < story.size(); ++i){
 			std::cout << std::endl << "Historia " << i << std::endl; 
 			for (int j = 0; j < story[i].size(); ++j){
 				start(story[i][j]);
 				// printf("i = %d j = %d\n", i, j);
-
 				
 
 			}
 
+			if(!serializable) std::cout <<  "################################################"  <<  std::endl << "THIS STORY IS NOT SERIALIZABLE!" << std::endl <<  "###########################################" << std::endl;
+			
 			// int ntransaction = N_transactions;
 			// int npages = N_pages;
 			// Lock_Table.swap(std::vector<LOCK*>);
@@ -434,20 +436,20 @@ public:
 			// printf("lt %d wq %d t %d\n", (int)Lock_Table.size(), (int)Wait_Q.size(), (int)Tail.size() );		
 			// tr_manager->clear(ntransaction);		
 
-// PRINT #####################################################################################################################################################
-		TR p;
+		// PRINT #####################################################################################################################################################
+		p = NULL;
 		std::cout << "Transactions" << std::endl;
-		for (int i = 0; i < 2; ++i){
+		for (int k = 0; k < 2; ++k){
 			std::cout << "< ";
-			p = tr_manager->get(i);
-			std::cout << "T" <<  p.id << ", status=" << ((p.status == Status::active) ? "active" : ((p.status == Status::commited) ? "commited" : "aborted" )) << ", timestamp=" << p.timestamp << " | " ;
+			p = tr_manager->get(k);
+			if(p!=NULL) std::cout << "T" <<  p->id << ", status=" << ((p->status == Status::active) ? "active" : ((p->status == Status::commited) ? "commited" : "aborted" )) << ", timestamp=" << p->timestamp << " | " ;
 			std::cout << " >" << std::endl;		
 		}
-		LOCK* l;
+		l = NULL;
 		std::cout << "Lock Table" << std::endl;
-		for (int i = 0; i < Lock_Table.size(); ++i){
+		for (int k = 0; k < Lock_Table.size(); ++k){
 			std::cout << "< ";
-			l = Lock_Table[i];
+			l = Lock_Table[k];
 			for (; l != NULL; l = l->prox){
 				if(l != NULL) std::cout << "pageid=" << l->pageid << ", mode=" << ((l->mode == Mode::X) ? 'X' : 'S') << ", T" << l->tr << " | " ;
 				
@@ -458,11 +460,11 @@ public:
 		}
 
 
-		LOCK* qd;
+		qd = NULL;
 		std::cout << "Wait Queue" << std::endl;
-		for (int i = 0; i < Wait_Q.size(); ++i){
+		for (int k = 0; k < Wait_Q.size(); ++k){
 			std::cout << "< ";
-			qd = Wait_Q[i];
+			qd = Wait_Q[k];
 			for (; qd != NULL; qd = qd->prox){
 				if(qd != NULL) std::cout << "pageid"<< qd->pageid << ", mode=" << ((qd->mode == Mode::X) ? 'X' : 'S') << ", T" << qd->tr << " | " ;
 				
@@ -474,33 +476,37 @@ public:
 
 		// printf("npages %d ntr %d\n", N_pages, N_transactions);
 
-// ########################################################################################################################################################
-// LIMPANDO VETORES 
-// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+		// ########################################################################################################################################################
+		// LIMPANDO VETORES 
+		// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
-			for (int i = 0; i < Lock_Table.size(); ++i){
-				LOCK* p = Lock_Table[i], *aux;
+			for (int D = 0; D < Lock_Table.size(); ++D){
+				LOCK* p = Lock_Table[D], *aux;
 				while(p != NULL){
 					aux = p;
 					p = p->prox;
 					free(aux);
 				}
-					
+				Lock_Table[D] = NULL;
 			}
-			for (int i = 0; i < Wait_Q.size(); ++i){
-				LOCK* p = Wait_Q[i], *aux;
+			for (int D = 0; D < Wait_Q.size(); ++D){
+				LOCK* p = Wait_Q[D], *aux;
 				while(p != NULL){
 					aux = p;
 					p = p->prox;
 					free(aux);
 				}
-					
-			}		
-
+				Wait_Q[D] = NULL;
+				Tail[D] = NULL;
+			}
+			// Lock_Table.resize(N_pages);
+			// Wait_Q.resize(N_pages);
+			// Tail.resize(N_pages);
 			tr_manager->clear(N_transactions);
-			
-// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+			serializable = 1;
+		// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 
@@ -567,11 +573,11 @@ int main(int argc, char const *argv[]){
 	v.push_back(op5);
 	v.push_back(op6);
 	v.push_back(op7);
-	v.push_back(op8);
 	v.push_back(op9);
 	v.push_back(op10);
 	v.push_back(op11);
 	v.push_back(op12);
+	// v.push_back(op8);
 
 	std::vector<OP> w;
 	w.push_back(op23);
