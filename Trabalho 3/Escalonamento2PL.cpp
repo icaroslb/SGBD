@@ -102,7 +102,7 @@ public:
 		TR aux;
 		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
 				aux = tr_manager->get(p->tr);
-				if(aux.timestamp < QueuedTr.timestamp) QueuedTr = aux;
+				if(aux.timestamp > QueuedTr.timestamp) QueuedTr = aux;
 		}
 		// if(QueuedTr.id != thisTr.id){
 
@@ -143,7 +143,7 @@ public:
 		TR aux;
 		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
 				aux = tr_manager->get(p->tr);
-				if(aux.timestamp > QueuedTr.timestamp) QueuedTr = aux;
+				if(aux.timestamp < QueuedTr.timestamp) QueuedTr = aux;
 		}
 
 		if(thisTr.timestamp <= QueuedTr.timestamp){
@@ -186,7 +186,7 @@ public:
 			Lock_Table[D] = newlock;
 			return false;
 		}
-		if(Lock_Table[D] != NULL){		// senao, a pagina esta bloqueada
+		else{		// senao, a pagina esta bloqueada
 			
 			if(Lock_Table[D]->mode == Mode::S){  // se o bloqueio for do tipo compartilhado adiciona
 				LOCK* aux = Lock_Table[D];   	 // a transacao como uma das que bloqueia a pagina D
@@ -228,7 +228,7 @@ public:
 			return false;
 		}
 		// senao, a pagina esta bloqueada
-		if(Lock_Table[D] != NULL){
+		else{
 			// Tratamento de deadlock
 			wait_die(Tr, D, newlock);
 			return false;
@@ -358,7 +358,7 @@ public:
 
 
 
-	bool start(OP next_operation){
+	void start(OP next_operation){
 		// inicia uma operacao, que pode ser de inicializacao de transacao, de leitura, de escrita ou um commit.
 		// operacoes de transacoes terminadas e abortadas serao ignoradas 
 		if (next_operation.ope == Type::BT || tr_manager->get(next_operation.id).status != Status::commited && tr_manager->get(next_operation.id).status != Status::aborted){
@@ -404,7 +404,7 @@ public:
 	}
 
 
-	void scheduler(std::vector<std::vector<OP>> story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
+	void scheduler(std::vector<std::vector<OP>> &story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
 		for (int i = 0; i < story.size(); ++i){
 			std::cout << std::endl << "Historia " << i << std::endl; 
 			for (int j = 0; j < story[i].size(); ++j){
