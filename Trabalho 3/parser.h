@@ -61,7 +61,7 @@ std::vector < std::vector <OP>* >* parser () {
         std::getline(arquivo, texto);
         tam = texto.size();
         
-        for(int i = 0; i < tam; i++){
+        for(int i = 0; i < tam; i += 2){
             if(texto.compare(i, 2, "BT") == 0){
                 opLida.ope = Type::BT;
                 i += 3;
