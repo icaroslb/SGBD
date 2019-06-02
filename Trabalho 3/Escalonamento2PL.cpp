@@ -357,7 +357,7 @@ public:
 
 
 
-	void start(OP next_operation){
+	void start(OP &next_operation){
 		// inicia uma operacao, que pode ser de inicializacao de transacao, de leitura, de escrita ou um commit.
 		// operacoes de transacoes terminadas e abortadas serao ignoradas 
 		if (next_operation.ope == Type::BT || tr_manager->get(next_operation.id)->status != Status::commited && tr_manager->get(next_operation.id)->status != Status::aborted){
@@ -403,13 +403,13 @@ public:
 	}
 
 
-	void scheduler(std::vector<std::vector<OP>> &story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
+	void scheduler(std::vector<std::vector<OP>*> &story){     //Le o arquivo e resolve deadlock atravez do Wait_Die.
 		TR* p;
 		LOCK *l, *qd;
 		for (int i = 0; i < story.size(); ++i){
 			std::cout << std::endl << "Historia " << i << std::endl; 
-			for (int j = 0; j < story[i].size(); ++j){
-				start(story[i][j]);
+			for (int j = 0; j < story[i]->size(); ++j){
+				start((*(story[i]))[j]);
 				// printf("i = %d j = %d\n", i, j);
 				
 
@@ -520,87 +520,13 @@ public:
 //#########################################################################################################################################################
 
 int main(int argc, char const *argv[]){
-	std::vector<OP> v;
-	
-	// Estoria A
-	OP op1  = {0, Type::BT, -1};
-	OP op2  = {1, Type::BT, -1};
-	OP op3  = {1, Type::R, 0};
-	OP op4  = {0, Type::R, 1};
-	OP op5  = {0, Type::W, 1};
-	OP op6  = {1, Type::R, 1 };
-	OP op7  = {0, Type::W, 2};
-	OP op8  = {0, Type::CM, -1};
-	OP op9  = {1, Type::W, 1};
-	OP op10 = {1, Type::R, 2};
-	OP op11 = {1, Type::W, 2};
-	OP op12 = {1, Type::CM, -1};
-
-	// Estoria B
-	OP op23  = {0, Type::BT, -1};
-	OP op24  = {1, Type::BT, -1};
-
-	OP op13  = {1, Type::R, 0};
-	OP op14  = {0, Type::R, 1};
-	OP op15  = {0, Type::W, 1 };
-	OP op16  = {1, Type::R, 1 };
-	OP op17  = {0, Type::W, 2  };
-	OP op18  = {0, Type::CM, -1};
-	OP op19  = {1, Type::W, 1};
-	OP op20  = {1, Type::R, 2};
-	OP op21  = {1, Type::W, 2};
-	OP op22  = {1, Type::CM, -1};
-
-
-
-	OP op25  = {1, Type::BT, -1};
-	OP op26  = {2, Type::BT, -1};
-
-	OP op27  = {1, Type::R, 1};
-	OP op28  = {2, Type::R, 0};
-	OP op29  = {1, Type::R, 0};
-
-
-
-
-
-
-
-	v.push_back(op1);
-	v.push_back(op2);
-	v.push_back(op3);
-	v.push_back(op4);
-	v.push_back(op5);
-	v.push_back(op6);
-	v.push_back(op7);
-	v.push_back(op9);
-	v.push_back(op10);
-	v.push_back(op11);
-	v.push_back(op12);
-	// v.push_back(op8);
-
-	std::vector<OP> w;
-	w.push_back(op23);
-	w.push_back(op24);
-	w.push_back(op13);
-	w.push_back(op14);
-	w.push_back(op15);
-	w.push_back(op16);
-	w.push_back(op17);
-	w.push_back(op18);
-	w.push_back(op19);
-	w.push_back(op20);
-	w.push_back(op21);
-	w.push_back(op22);
-
-
+	std::vector< std::vector <OP>* > *v = parser();
 
 	Lock_Manager *lm = new  Lock_Manager(3, 4);
 	// Lock_Manager lm2(v.size(),3);
 	std::vector<std::vector<OP> > v1;
-	v1.push_back(v);
-	v1.push_back(w);
-	lm->scheduler(v1);
+	
+	lm->scheduler(*v);
 
 
 	return 0;

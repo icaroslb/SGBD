@@ -15,7 +15,7 @@ typedef struct Operation{
 
 
 void abrirArquivo (std::fstream &arquivo);
-std::vector < std::vector <OP> > parser ();
+std::vector < std::vector <OP>* >* parser ();
 
 
 void abrirArquivo (std::fstream &arquivo) {
@@ -34,10 +34,10 @@ void abrirArquivo (std::fstream &arquivo) {
 }
 
 
-std::vector < std::vector <OP> > parser () {
+std::vector < std::vector <OP>* >* parser () {
     std::fstream arquivo;
-    std::vector < std::vector <OP> > linhas;
-    std::vector <OP> historia;
+    std::vector < std::vector <OP>* > *linhas = new std::vector < std::vector <OP> * >;
+    std::vector <OP> *historia = new std::vector <OP>;
     std::string texto;
     OP opLida;
     int tam;
@@ -67,13 +67,13 @@ std::vector < std::vector <OP> > parser () {
                 opLida.item = -1;
             }
             opLida.id -= '0';
-
-            historia.push_back(opLida);
+        
+            historia->push_back(opLida);
         }
         
-        linhas.push_back(historia);
+        linhas->push_back(historia);
 
-        historia.clear();
+        historia = new std::vector <OP>;
     }
 
     arquivo.close();
