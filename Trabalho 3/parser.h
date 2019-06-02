@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <map>
 
 enum class Type {BT, R, W, CM};
 typedef struct Operation{
@@ -38,9 +39,10 @@ std::vector < std::vector <OP>* >* parser () {
     std::fstream arquivo;
     std::vector < std::vector <OP>* > *linhas = new std::vector < std::vector <OP> * >;
     std::vector <OP> *historia = new std::vector <OP>;
+    std::map<char, int> pag;
     std::string texto;
     OP opLida;
-    int tam;
+    int tam, idPagina = 0;;
 
     abrirArquivo(arquivo);
     
@@ -56,11 +58,21 @@ std::vector < std::vector <OP>* >* parser () {
             }else if(texto.compare(i, 1, "R") == 0){
                 opLida.ope = Type::R;
                 opLida.id = texto[i+1];
-                opLida.item = texto[i+3];
+
+                if(pag.find(texto[i+3]) == pag.end()){
+                    pag[texto[i+3]] = idPagina++;
+                }
+
+                opLida.item = pag[texto[i+3]];
             }else if(texto.compare(i, 1, "W") == 0){
                 opLida.ope = Type::W;
                 opLida.id = texto[i+1];
-                opLida.item = texto[i+3];
+                
+                if(pag.find(texto[i+3]) == pag.end()){
+                    pag[texto[i+3]] = idPagina++;
+                }
+
+                opLida.item = pag[texto[i+3]];
             }else if(texto.compare(i, 2, "CM") == 0){
                 opLida.ope = Type::CM;
                 opLida.id = texto[i+3];
