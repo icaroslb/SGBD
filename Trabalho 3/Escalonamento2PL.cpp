@@ -258,6 +258,38 @@ public:
 		
 
 
+		// Percorre a Wait_Q apagando pedidos de Tr
+		aux = NULL; 
+		for (int i = 0; i < Wait_Q.size(); ++i){
+		// printf("NADA FOR 2\n");
+
+			request = Wait_Q[i];
+			ant = request;
+			while( request != NULL ){
+				// printf("NADA WHILE\n");
+				if(request->tr == Tr){
+					aux = request;
+					if(request == Wait_Q[i]){
+						if( Lock_Table[i]!= NULL && Lock_Table[i]->mode == Mode::X ) { serializable = 0; break; }
+						Wait_Q[i] = Wait_Q[i]->prox;
+						request = request->prox;	
+					}
+					else{
+						serializable = 0;
+						break;
+						ant->prox = request->prox;
+						request = request->prox;
+					}
+					if(aux == Tail[i]) Tail[i] = ant;
+					free(aux);
+
+				}
+				else{
+					ant = request;
+					request = request->prox;
+				}
+			}
+		}
 
 		for (int D = 0; D < Lock_Table.size(); ++D){
 			
@@ -284,39 +316,7 @@ public:
 
 
 
-		// printf("FOR 1 OK\n");
 
-		// Percorre a Wait_Q apagando pedidos de Tr
-		aux = NULL; 
-		for (int i = 0; i < Wait_Q.size(); ++i){
-		// printf("NADA FOR 2\n");
-
-			request = Wait_Q[i];
-			ant = request;
-			while( request != NULL ){
-				// printf("NADA WHILE\n");
-				if(request->tr == Tr){
-					aux = request;
-					if(request == Wait_Q[i]){
-						if( Lock_Table[i]!= NULL && Lock_Table[i]->mode == Mode::X ) serializable = 0;
-						Wait_Q[i] = Wait_Q[i]->prox;
-						request = request->prox;	
-					}
-					else{
-						serializable = 0;
-						ant->prox = request->prox;
-						request = request->prox;
-					}
-					if(aux == Tail[i]) Tail[i] = ant;
-					free(aux);
-
-				}
-				else{
-					ant = request;
-					request = request->prox;
-				}
-			}
-		}
 
 		for (int D = 0; D < Lock_Table.size(); ++D)
 			alock(D);
@@ -424,11 +424,11 @@ public:
 			for (int j = 0; j < story[i]->size(); ++j){
 				start((*(story[i]))[j]);
 				// printf("i = %d j = %d\n", i, j);
-				
+				if(!serializable) break;
 
 			}
 
-			if(!serializable) std::cout <<  "################################################"  <<  std::endl << "THIS STORY IS NOT SERIALIZABLE!" << std::endl <<  "###########################################" << std::endl;
+			if(!serializable) std::cout <<  "################################################"  <<  std::endl << "THIS STORY IS NOT SERIALIZABLE!" << std::endl <<  "###############################################" << std::endl;
 			
 			// int ntransaction = N_transactions;
 			// int npages = N_pages;
