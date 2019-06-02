@@ -16,6 +16,7 @@ typedef struct Operation{
 
 
 void abrirArquivo (std::fstream &arquivo);
+int lerNum (std::string &texto, int &pos);
 std::vector < std::vector <OP>* >* parser ();
 
 
@@ -34,6 +35,16 @@ void abrirArquivo (std::fstream &arquivo) {
     }while(!(arquivo.is_open()));
 }
 
+int lerNum (std::string &texto, int &pos) {
+    int init = pos, tam = 0;
+
+    while(texto[pos] >= '0' && texto[pos] <= '9'){
+        pos++;
+        tam++;
+    }
+    std::cout << std::stoi(texto.substr(init, tam), nullptr) << '\n';
+    return std::stoi(texto.substr(init, tam), nullptr);
+}
 
 std::vector < std::vector <OP>* >* parser () {
     std::fstream arquivo;
@@ -50,39 +61,48 @@ std::vector < std::vector <OP>* >* parser () {
         std::getline(arquivo, texto);
         tam = texto.size();
         
-        for(int i = 0; i < tam; i += 6){
+        for(int i = 0; i < tam; i++){
             if(texto.compare(i, 2, "BT") == 0){
                 opLida.ope = Type::BT;
-                opLida.id = texto[i+3];
+                i += 3;
+                opLida.id = lerNum(texto, i);
                 opLida.item = -1;
                 opLida.data = -1;
             }else if(texto.compare(i, 1, "R") == 0){
                 opLida.ope = Type::R;
-                opLida.id = texto[i+1];
+                i++;
+                opLida.id = lerNum(texto, i);
 
-                if(pag.find(texto[i+3]) == pag.end()){
-                    pag[texto[i+3]] = idPagina++;
+                i++;
+                if(pag.find(texto[i]) == pag.end()){
+                    pag[texto[i]] = idPagina++;
                 }
 
-                opLida.item = pag[texto[i+3]];
-                opLida.data = texto[i+3];
+                opLida.item = pag[texto[i]];
+                opLida.data = texto[i];
+
+                i++;
             }else if(texto.compare(i, 1, "W") == 0){
                 opLida.ope = Type::W;
-                opLida.id = texto[i+1];
+                i++;
+                opLida.id = lerNum(texto, i);
                 
-                if(pag.find(texto[i+3]) == pag.end()){
-                    pag[texto[i+3]] = idPagina++;
+                i++;
+                if(pag.find(texto[i]) == pag.end()){
+                    pag[texto[i]] = idPagina++;
                 }
 
-                opLida.item = pag[texto[i+3]];
-                opLida.data = texto[i+3];
+                opLida.item = pag[texto[i]];
+                opLida.data = texto[i];
+
+                i++;
             }else if(texto.compare(i, 2, "CM") == 0){
                 opLida.ope = Type::CM;
-                opLida.id = texto[i+3];
+                i += 3;
+                opLida.id = lerNum(texto, i);
                 opLida.item = -1;
                 opLida.data = -1;
             }
-            opLida.id -= '0';
         
             historia->push_back(opLida);
         }
