@@ -161,7 +161,7 @@ public:
 		}
 		else
 			if(thisTr.timestamp == QueuedTr.timestamp && count==1){
-				Lock_Table[D]->mode = Mode::X;
+				Lock_Table[D]->mode = newlock->mode;
 			}else{
 			printf("Wait\n");
 				if(Tail[D] != NULL){
@@ -298,6 +298,7 @@ public:
 				if(request->tr == Tr){
 					aux = request;
 					if(request == Wait_Q[i]){
+						if( Lock_Table[i]!= NULL && Lock_Table[i]->mode == Mode::X ) serializable = 0;
 						Wait_Q[i] = Wait_Q[i]->prox;
 						request = request->prox;	
 					}
