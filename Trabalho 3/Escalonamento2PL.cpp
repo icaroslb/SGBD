@@ -34,13 +34,14 @@ typedef struct Lock_Request{
 //#####################################################################
 // MAIN CLASSES
 class Tr_Manager{
+	public:
 	std::vector<TR*> Tr_list;
-public:
+
 
 	int next_timestamp = 0;
 
 	Tr_Manager(int N_transactions){
-		Tr_list.resize(N_transactions);
+		Tr_list.resize(1000);
 	}
 	~Tr_Manager();
 
@@ -452,11 +453,13 @@ public:
 		// PRINT #####################################################################################################################################################
 		p = NULL;
 		std::cout << "Transactions" << std::endl;
-		for (int k = 0; k < 2; ++k){
-			std::cout << "< ";
-			p = tr_manager->get(k);
-			if(p!=NULL) std::cout << "T" <<  p->id << ", status=" << ((p->status == Status::active) ? "active" : ((p->status == Status::commited) ? "commited" : "aborted" )) << ", timestamp=" << p->timestamp << " | " ;
-			std::cout << " >" << std::endl;		
+		for (int k = 0; k < tr_manager->Tr_list.size(); k++){
+			if(tr_manager->get(k) != NULL){
+				std::cout << "< ";
+				p = tr_manager->get(k);
+				if(p!=NULL) std::cout << "T" <<  p->id << ", status=" << ((p->status == Status::active) ? "active" : ((p->status == Status::commited) ? "commited" : "aborted" )) << ", timestamp=" << p->timestamp << " | " ;
+				std::cout << " >" << std::endl;		
+			}
 		}
 		l = NULL;
 		std::cout << "Lock Table" << std::endl;
