@@ -86,6 +86,9 @@ std::vector < std::vector <OP>* >* parser () {
         linhas->push_back(historia);
 
         historia = new std::vector <OP>;
+
+        idPagina = 0;
+        pag.clear();
     }
 
     arquivo.close();
