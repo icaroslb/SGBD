@@ -9,9 +9,9 @@
 
 enum class Type {BT, R, W, CM};
 typedef struct Operation{
-    int  id;
+    int  id, item;
     Type ope;
-    char item;
+    char data;
 }OP;
 
 
@@ -55,6 +55,7 @@ std::vector < std::vector <OP>* >* parser () {
                 opLida.ope = Type::BT;
                 opLida.id = texto[i+3];
                 opLida.item = -1;
+                opLida.data = -1;
             }else if(texto.compare(i, 1, "R") == 0){
                 opLida.ope = Type::R;
                 opLida.id = texto[i+1];
@@ -64,6 +65,7 @@ std::vector < std::vector <OP>* >* parser () {
                 }
 
                 opLida.item = pag[texto[i+3]];
+                opLida.data = texto[i+3];
             }else if(texto.compare(i, 1, "W") == 0){
                 opLida.ope = Type::W;
                 opLida.id = texto[i+1];
@@ -73,10 +75,12 @@ std::vector < std::vector <OP>* >* parser () {
                 }
 
                 opLida.item = pag[texto[i+3]];
+                opLida.data = texto[i+3];
             }else if(texto.compare(i, 2, "CM") == 0){
                 opLida.ope = Type::CM;
                 opLida.id = texto[i+3];
                 opLida.item = -1;
+                opLida.data = -1;
             }
             opLida.id -= '0';
         
@@ -86,9 +90,6 @@ std::vector < std::vector <OP>* >* parser () {
         linhas->push_back(historia);
 
         historia = new std::vector <OP>;
-
-        idPagina = 0;
-        pag.clear();
     }
 
     arquivo.close();

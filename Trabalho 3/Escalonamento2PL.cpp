@@ -378,13 +378,13 @@ public:
 
 			// Caso operacao de leitura, chama a funcao LS
 			else if(next_operation.ope == Type::R){
-				printf("Transaction id: %d | Reading page %d \n", next_operation.id, next_operation.item);
+				printf("Transaction id: %d | Reading page %c \n", next_operation.id, next_operation.data);
 				int error = LS(next_operation.id, next_operation.item);
 				if(error) printf("Falha na transacao\n");
 			}
 			// Caso operacao de escrita, chama a operacao LX
 			else if(next_operation.ope == Type::W){
-				printf("Transaction id: %d | Writing page %d \n", next_operation.id, next_operation.item);
+				printf("Transaction id: %d | Writing page %c \n", next_operation.id, next_operation.data);
 				int error = LX(next_operation.id, next_operation.item);
 				if(error) printf("Falha na transacao\n");
 			}
@@ -407,6 +407,7 @@ public:
 		TR* p;
 		LOCK *l, *qd;
 		for (int i = 0; i < story.size(); ++i){
+			getchar();
 			std::cout << std::endl << "Historia " << i << std::endl; 
 			for (int j = 0; j < story[i]->size(); ++j){
 				start((*(story[i]))[j]);
@@ -506,7 +507,6 @@ public:
 			tr_manager->clear(N_transactions);
 			serializable = 1;
 		// %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 
 
 
