@@ -148,23 +148,28 @@ public:
 		TR thisTr = *tr_manager->get(Tr);
 		TR QueuedTr = *tr_manager->get(Lock_Table[D]->tr);
 		TR aux;
+		int count = 0;
 		for (LOCK* p = Lock_Table[D]; p != NULL; p = p->prox){
-				aux = *tr_manager->get(p->tr);
-				if(aux.timestamp < QueuedTr.timestamp) QueuedTr = aux;
+			aux = *tr_manager->get(p->tr);
+			if(aux.timestamp < QueuedTr.timestamp) QueuedTr = aux;
+			count++;
 		}
-
-		if(thisTr.timestamp <= QueuedTr.timestamp){
-			printf("Wait\n");
-			if(Tail[D] != NULL){
-				Tail[D]->prox = newlock;
-				Tail[D] = Tail[D]->prox;
-			}
-			else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
-		}else{
+		if (thisTr.timestamp > QueuedTr.timestamp){
 			printf("Die - ROLLBACK! Transaction id: %d timestamp: %d \n", thisTr.id, thisTr.timestamp);
 			tr_manager->update_status(Tr, Status::aborted);
 			U(Tr);
-		}		 		
+		}
+		else
+			if(thisTr.timestamp == QueuedTr.timestamp && count==1){
+				Lock_Table[D]->mode = Mode::X;
+			}else{
+			printf("Wait\n");
+				if(Tail[D] != NULL){
+					Tail[D]->prox = newlock;
+					Tail[D] = Tail[D]->prox;
+				}
+				else { Wait_Q[D] = newlock; Tail[D] = Wait_Q[D]; }
+			}	 		
 
 	}
 
@@ -265,7 +270,7 @@ public:
 					// if(ant != NULL) ant->prox = (*p)->prox;
 					
 					(*p) = (*p)->prox;
-					// free(aux);
+					free(aux);
 				}
 				else {
 					// ant = (*p);
