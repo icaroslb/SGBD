@@ -3,6 +3,12 @@
 #include <string>
 #include "parser.h"
 
+#ifndef PAGES
+#define PAGES 10
+#endif	
+#ifndef TRANSACTIONS
+#define TRANSACTIONS 10
+#endif
 //#################################################################
 // ESTRUTURAS DE DADOS
 enum class Status {active, commited, aborted};
@@ -259,7 +265,7 @@ public:
 					// if(ant != NULL) ant->prox = (*p)->prox;
 					
 					(*p) = (*p)->prox;
-					free(aux);
+					// free(aux);
 				}
 				else {
 					// ant = (*p);
@@ -522,7 +528,7 @@ public:
 int main(int argc, char const *argv[]){
 	std::vector< std::vector <OP>* > *v = parser();
 
-	Lock_Manager *lm = new  Lock_Manager(3, 4);
+	Lock_Manager *lm = new  Lock_Manager(TRANSACTIONS, PAGES);
 	// Lock_Manager lm2(v.size(),3);
 	std::vector<std::vector<OP> > v1;
 	
